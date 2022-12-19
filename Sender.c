@@ -1,4 +1,4 @@
-// Client
+// Sender
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -11,7 +11,7 @@
 #include <netinet/tcp.h>
 #include <time.h>
 
-#define SERVER_PORT 5060
+#define SERVER_PORT 5655
 #define SERVER_IP_ADDRESS "127.0.0.1"
 #define BUFFER 5000
 #define FILE_SIZE 1048575
@@ -30,32 +30,30 @@ int main()
     // Open the file
     FILE* file = fopen("file.txt","r");
 
+    //Socket decleration.
     memset(sendBuff, '0', sizeof(sendBuff));
     if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         printf("\n Error : Could not create socket \n");
         return 1;
     }
-
+    //Socket init.
     memset(&serv_addr, '0', sizeof(serv_addr));
-
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(SERVER_PORT);
-
     if(inet_pton(AF_INET,(const char*)SERVER_IP_ADDRESS, &serv_addr.sin_addr)<=0)
     {
         printf("\n inet_pton error occured\n");
         return 1;
     }
-    //array of each part of the file
+
+    //File partitioning -> Arrays.
     long size_part = FILE_SIZE/2;
     char *first_part = malloc(size_part);
     if(first_part == NULL){
         printf("Cannot find memory\n");
     }
     fread(first_part,1,size_part,file);
-
-    // the second part
     char *second_part = malloc(size_part);
     if(second_part == NULL){
         printf("Cannot find memory\n");
@@ -63,6 +61,8 @@ int main()
     fseek(file, size_part, SEEK_SET);
     fread(second_part,1,size_part,file);
     fseek(file, 0, SEEK_SET);
+
+    //Establishing a connection with server.
     if( connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
        printf("\n Error : Connect Failed \n");
@@ -70,6 +70,7 @@ int main()
     }
     printf("connected to server\n");
     int Want_Exit =1;
+    //Actual file sending loop.
     while(1){
         if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, "cubic", 5) == -1)
 	        {
@@ -104,7 +105,8 @@ int main()
         else{
             printf("Password : Valid !\n");
         }
-        //gonna send know with the CC Reno
+
+        //Changing CC Algo to "reno"
         if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, "reno", 4) == -1)
 	        {
 	            printf("setsockopt() failed with error code : %d\n", errno);
@@ -120,6 +122,7 @@ int main()
             }
             offset += n2;
         }
+        //Scanning for continuous instructions.
         printf("To continue submit [1] else [0]: ");
         scanf("%d", &Want_Exit);
         if(Want_Exit==0){

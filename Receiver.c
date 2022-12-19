@@ -1,4 +1,4 @@
-// Serveur
+// Receiver
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -12,7 +12,7 @@
 #include <sys/time.h>
 
 
-#define SERVER_PORT 5060
+#define SERVER_PORT 5655
 #define SERVER_IP_ADDRESS "127.0.0.1"
 #define BUFFER 5000
 #define FILE_SIZE 1048575
@@ -26,10 +26,12 @@ int main()
     int serverListener = 0, clientSocket = 0;
     struct sockaddr_in serv_addr;
 
+    //Buffer Array size & splitting for two parts. 
     char recvBuff[BUFFER];
     char FirstPart[FILE_SIZE/2];
     char SecondPart[FILE_SIZE/2];
 
+    //Socket decleration.
     serverListener = socket(AF_INET, SOCK_STREAM, 0);
     if(serverListener == -1)
     {
@@ -38,10 +40,10 @@ int main()
     memset(&serv_addr, '0', sizeof(serv_addr));
     memset(recvBuff, '0', sizeof(recvBuff));
 
+    //Socket init & binding.
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(SERVER_PORT);
-
     if (bind(serverListener, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1){
         printf("Bind failed with error code : %d" ,	errno);
 	    // TODO: close the socket
@@ -49,20 +51,23 @@ int main()
     }
     printf("Bind() success\n");
     listen(serverListener, 10);
+    
     //Accept and incoming connection
     printf("Waiting for incoming TCP-connections...\n");
     clientSocket = accept(serverListener, (struct sockaddr*)NULL, NULL);
     printf("Connection accepted Client <--> Server\n");
 
-    // Variable to measure the time 
+    //Variables for time measuring.
     int counter_sending_Cubic =0;
     int counter_sending_Reno =0;
     struct timeval start,end,start1,end1;
     double elapsedTimeCubic = 0;
     double elapsedTimeReno = 0;
 
+    //Actual file reciving loop.
     while(1)
     {
+        //First part file sending.
         int offset = 0;
         gettimeofday(&start,NULL);
         while (offset < FILE_SIZE/2) {
@@ -74,7 +79,6 @@ int main()
             memcpy(FirstPart + offset, recvBuff, n);
             offset += n;
         }
-
         gettimeofday(&end,NULL);
         elapsedTimeCubic += ((end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0);
         counter_sending_Cubic++;
@@ -91,6 +95,8 @@ int main()
 	            close(clientSocket);
 	            exit(1);
 	        }
+
+        //Second file part sending.
         offset = 0;
         gettimeofday(&start1,NULL);
         while (offset < FILE_SIZE/2) {
@@ -113,6 +119,7 @@ int main()
     		    printf("recvfrom() [Exit or Continue] failed with error code  : %d", errno	);
     		    return -1;
     	    }
+        //Recving continuous instructions.
         if(want_toExit == 0){
             printf("The avg time calc for the first part with CC 'cubic' : [ %f ]\n", (elapsedTimeCubic/counter_sending_Cubic));
             printf("The avg time calc for the second part with CC 'reno' : [ %f ]\n", (elapsedTimeReno/counter_sending_Reno));
